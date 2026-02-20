@@ -77,7 +77,7 @@
     #status {
       position: fixed;
       top: 12px;
-      left: 12px;
+      left: 180px;
       padding: 8px 10px;
       max-width: min(90vw, 520px);
       font-size: 0.8rem;
@@ -271,6 +271,27 @@
       color: #fff5d7;
     }
 
+    .back-btn {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 12;
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--panel);
+      transition: background 0.2s;
+    }
+    
+    .back-btn:hover {
+      background: rgba(48, 80, 106, 0.5);
+    }
+
     @media (max-width: 900px) {
       #eduPanel {
         max-height: calc(100vh - 72px);
@@ -293,6 +314,7 @@
     Mouse wheel: zoom<br />
     Auto-rotate starts on load
   </div>
+  <a href="index.html" class="back-btn">← Back to Exhibition</a>
   <button id="panelToggle" type="button">Learning Panel</button>
   <aside id="eduPanel">
     <h2 class="panel-title">Refinery Learning Console</h2>
