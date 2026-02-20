@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Separator Level Control Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg-1: #061722;
+      --bg-2: #0f3550;
+      --card: rgba(9, 33, 48, 0.82);
+      --card-border: rgba(173, 216, 255, 0.24);
+      --text: #eef7ff;
+      --muted: #b6d5ea;
+      --accent: #17c3b2;
+      --accent-2: #00a5cf;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --safe-band: rgba(34, 197, 94, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1150px 650px at 10% -10%, #1d5d85 0%, transparent 58%),
+        radial-gradient(900px 520px at 100% 0%, #0f5174 0%, transparent 62%),
+        linear-gradient(170deg, var(--bg-1), var(--bg-2) 65%, #1b5e79);
+      min-height: 100vh;
+    .back-btn {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--card-border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--card);
+      transition: background 0.2s;
+    }
+    .back-btn:hover {
+      background: rgba(173, 216, 255, 0.1);
+    }
+
+    .app-shell {
+      width: min(1250px, 94vw);
+      margin: 24px auto 28px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1px solid var(--card-border);
+      background:
+        linear-gradient(130deg, rgba(3, 16, 26, 0.8), rgba(14, 43, 67, 0.74)),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(27, 88, 111, 0.12),
+          rgba(27, 88, 111, 0.12) 6px,
+          transparent 6px,
+          transparent 12px
+        );
+      backdrop-filter: blur(6px);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -55px auto;
+      width: 260px;
+      height: 160px;
+      background: radial-gradient(circle, rgba(23, 195, 178, 0.24), transparent 70%);
+      pointer-events: none;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2.2vw, 2rem);
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: 0.015em;
+    }
+
+    .subtitle {
+      margin: 8px 0 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .hero-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .objective {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(34, 197, 94, 0.46);
+      background: rgba(34, 197, 94, 0.16);
+      font-weight: 500;
+      color: #d8ffe9;
+    }
+
+    .lesson-trigger {
+      border: 1px solid rgba(173, 216, 255, 0.36);
+      background: rgba(153, 203, 232, 0.12);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .lesson-trigger:hover {
+      background: rgba(153, 203, 232, 0.2);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      background: var(--card);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 14px 34px rgba(2, 12, 18, 0.32);
+      padding: 14px;
+      min-height: 220px;
+    }
+
+    .card h2 {
+      margin: 0 0 6px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.08rem;
+      font-weight: 600;
+    }
+
+    .metric {
+      color: var(--muted);
+      margin: 0 0 10px;
+      font-size: 0.94rem;
+    }
+
+    .value {
+      margin-top: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-family: "Space Grotesk", sans-serif;
+      letter-spacing: 0.015em;
+    }
+
+    #levelCard {
+      grid-column: span 4;
+    }
+
+    #pressureCard {
+      grid-column: span 4;
+    }
+
+    #controlsCard {
+      grid-column: span 4;
+    }
+
+    #trendCard {
+      grid-column: span 12;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gauge-canvas {
+      width: 100%;
+      height: 225px;
+      display: block;
+      border-radius: 12px;
+      background: rgba(8, 28, 42, 0.38);
+    }
+
+    .trend-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 220px;
+    }
+
+    #trendChart {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .status-pill {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .status-safe {
+      color: #dcffe8;
+      background: rgba(34, 197, 94, 0.16);
+      border-color: rgba(34, 197, 94, 0.4);
+    }
+
+    .status-warn {
+      color: #fef3c7;
+      background: rgba(245, 158, 11, 0.16);
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .status-danger {
+      color: #fee2e2;
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.52);
+    }
+
+    .controls-grid {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .action-btn {
+      width: 100%;
+      border: 1px solid rgba(189, 222, 248, 0.26);
+      border-radius: 10px;
+      background: linear-gradient(160deg, rgba(17, 64, 87, 0.86), rgba(8, 34, 52, 0.86));
+      color: var(--text);
+      padding: 11px 10px;
+      text-align: left;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(117, 207, 255, 0.7);
+      background: linear-gradient(160deg, rgba(19, 74, 101, 0.95), rgba(9, 41, 63, 0.95));
+    }
+
+    .action-btn.active {
+      border-color: rgba(23, 195, 178, 0.8);
+      box-shadow: 0 0 0 2px rgba(23, 195, 178, 0.18) inset;
+    }
+
+    .process-vars {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .var-box {
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(180, 220, 246, 0.1);
+      border: 1px solid rgba(185, 222, 245, 0.22);
+      min-height: 64px;
+    }
+
+    .var-label {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .var-value {
+      margin: 4px 0 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: "Space Grotesk", sans-serif;
+    }
+
+    .coach-panel {
+      border-radius: 10px;
+      border: 1px solid rgba(173, 216, 255, 0.3);
+      background: rgba(10, 36, 52, 0.8);
+      padding: 10px;
+      min-height: 112px;
+      transition: border-color 180ms ease;
+    }
+
+    .coach-title {
+      margin: 0 0 6px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: "Space Grotesk", sans-serif;
+    }
+
+    .coach-text {
+      margin: 0;
+      line-height: 1.45;
+      color: #eaf6ff;
+      font-size: 0.92rem;
+    }
+
+    .coach-good {
+      border-color: rgba(34, 197, 94, 0.58);
+    }
+
+    .coach-warn {
+      border-color: rgba(245, 158, 11, 0.6);
+    }
+
+    .coach-bad {
+      border-color: rgba(239, 68, 68, 0.65);
+    }
+
+    .surge-alert {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 30;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      background: rgba(80, 40, 0, 0.9);
+      color: #ffe7c4;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+      transform: translateY(-10px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease;
+      font-weight: 600;
+    }
+
+    .surge-alert.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 10, 16, 0.76);
+      display: grid;
+      place-items: center;
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+      padding: 18px;
+    }
+
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overlay-panel {
+      width: min(740px, 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(164, 223, 255, 0.3);
+      padding: 18px;
+      background:
+        linear-gradient(135deg, rgba(4, 21, 32, 0.98), rgba(13, 43, 62, 0.95)),
+        radial-gradient(circle at 0 0, rgba(23, 195, 178, 0.16), transparent 55%);
+    }
+
+    .overlay-panel h3 {
+      margin: 0 0 10px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 1.28rem;
+    }
+
+    .overlay-panel p {
+      margin: 0 0 10px;
+      color: #dbefff;
+      line-height: 1.52;
+    }
+
+    .overlay-panel ul {
+      margin: 0 0 14px;
+      padding-left: 20px;
+      color: #dbefff;
+      line-height: 1.5;
+    }
+
+    .overlay-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .overlay-actions button {
+      border: 1px solid rgba(23, 195, 178, 0.66);
+      background: rgba(23, 195, 178, 0.24);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1080px) {
+      #levelCard,
+      #pressureCard,
+      #controlsCard {
+        grid-column: span 6;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app-shell {
+        width: min(1320px, 96vw);
+      }
+
+      #levelCard,
+      #pressureCard,
+      #controlsCard,
+      #trendCard {
+        grid-column: span 12;
+      }
+
+      .gauge-canvas {
+        height: 210px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <a href="index.html" class="back-btn">← Back to Exhibition</a>
+      <h1>Process Control in Oil Industry: Separator Level Control</h1>
+      <p class="subtitle">
+        Watch how disturbance and operator actions affect separator liquid level and pressure in real time.
+      </p>
+      <div class="hero-row">
+        <p class="objective">Learning Objective: Keep oil level in safe band (30%-70%).</p>
+        <button id="openLessonBtn" class="lesson-trigger">Why Level Control Matters</button>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <section id="levelCard" class="card">
+        <h2>Level Gauge</h2>
+        <p class="metric">Live separator oil level (0%-100%).</p>
+        <canvas id="levelGauge" class="gauge-canvas"></canvas>
+        <div id="levelValue" class="value">Level: 52.0%</div>
+        <span id="levelStatus" class="status-pill status-safe">In safe band</span>
+      </section>
+
+      <section id="pressureCard" class="card">
+        <h2>Pressure Gauge</h2>
+        <p class="metric">Separator pressure response to flow and gas valve changes.</p>
+        <canvas id="pressureGauge" class="gauge-canvas"></canvas>
+        <div id="pressureValue" class="value">Pressure: 4.3 bar</div>
+      </section>
+
+      <section id="controlsCard" class="card">
+        <h2>Control Actions</h2>
+        <p class="metric">Choose one action and observe dynamic behavior.</p>
+
+        <div class="controls-grid">
+          <button class="action-btn" data-action="slow">Open oil outlet valve slowly</button>
+          <button class="action-btn" data-action="gas">Close gas valve</button>
+          <button class="action-btn" data-action="none">Do nothing</button>
+          <button class="action-btn" data-action="full">Open oil valve 100%</button>
+        </div>
+
+        <div class="process-vars">
+          <div class="var-box">
+            <p class="var-label">Inlet Flow</p>
+            <p id="inletFlowVal" class="var-value">52.0%</p>
+          </div>
+          <div class="var-box">
+            <p class="var-label">Oil Valve</p>
+            <p id="oilValveVal" class="var-value">50.0%</p>
+          </div>
+          <div class="var-box">
+            <p class="var-label">Gas Valve</p>
+            <p id="gasValveVal" class="var-value">62.0%</p>
+          </div>
+        </div>
+
+        <div id="coachPanel" class="coach-panel">
+          <p id="coachTitle" class="coach-title">AI Explanation</p>
+          <p id="coachText" class="coach-text">
+            A disturbance will happen after 3 seconds. Choose the best control move to keep level between 30% and 70%.
+          </p>
+        </div>
+      </section>
+
+      <section id="trendCard" class="card">
+        <h2>Trend Chart</h2>
+        <p class="metric">Level and pressure history over time.</p>
+        <div class="trend-wrap">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="surgeAlert" class="surge-alert">⚠️ Inlet flow surge! Level rising.</div>
+
+  <div id="lessonOverlay" class="overlay open" role="dialog" aria-modal="true">
+    <div class="overlay-panel">
+      <h3>What Is Process Control, and Why Level Control Matters?</h3>
+      <p>
+        Process control means continuously measuring key variables (like level, pressure, and flow) and adjusting
+        valves to keep the process stable and safe.
+      </p>
+      <ul>
+        <li>If separator level gets too high, liquid carryover can upset gas handling equipment.</li>
+        <li>If separator level gets too low, gas blow-by and pump cavitation risks increase.</li>
+        <li>The correct manipulated variable for oil level is the oil outlet valve, not the gas valve.</li>
+        <li>Good control is smooth and deliberate: fast enough for safety, but not so aggressive that it causes instability.</li>
+      </ul>
+      <div class="overlay-actions">
+        <button id="closeLessonBtn">Start Simulation</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // Core simulation state for separator dynamics.
+    const sim = {
+      time: 0,
+      level: 52,
+      pressure: 43,
+      inletFlow: 52,
+      inletFlowTarget: 52,
+      oilValve: 50,
+      oilValveTarget: 50,
+      gasValve: 62,
+      gasValveTarget: 62,
+      disturbanceActive: false,
+      lastFrameTime: performance.now(),
+      selectedAction: null
+    };
+
+    const SAFE_LOW = 30;
+    const SAFE_HIGH = 70;
+
+    const levelCanvas = document.getElementById("levelGauge");
+    const pressureCanvas = document.getElementById("pressureGauge");
+    const levelValue = document.getElementById("levelValue");
+    const pressureValue = document.getElementById("pressureValue");
+    const levelStatus = document.getElementById("levelStatus");
+    const inletFlowVal = document.getElementById("inletFlowVal");
+    const oilValveVal = document.getElementById("oilValveVal");
+    const gasValveVal = document.getElementById("gasValveVal");
+    const coachPanel = document.getElementById("coachPanel");
+    const coachTitle = document.getElementById("coachTitle");
+    const coachText = document.getElementById("coachText");
+    const surgeAlert = document.getElementById("surgeAlert");
+    const lessonOverlay = document.getElementById("lessonOverlay");
+    const closeLessonBtn = document.getElementById("closeLessonBtn");
+    const openLessonBtn = document.getElementById("openLessonBtn");
+    const actionButtons = Array.from(document.querySelectorAll(".action-btn"));
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    // Smoothly move variables toward a target with a rate limit.
+    function approach(current, target, ratePerSecond, dt) {
+      const delta = target - current;
+      const maxStep = ratePerSecond * dt;
+      if (Math.abs(delta) <= maxStep) {
+        return target;
+      }
+      return current + Math.sign(delta) * maxStep;
+    }
+
+    // Fit a canvas to its CSS box and return a scaled drawing context.
+    function fitCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const targetWidth = Math.floor(width * dpr);
+      const targetHeight = Math.floor(height * dpr);
+
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+      }
+
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width, height };
+    }
+
+    function drawLevelGauge(timestamp) {
+      const { ctx, width, height } = fitCanvas(levelCanvas);
+      ctx.clearRect(0, 0, width, height);
+
+      const tankX = width * 0.36;
+      const tankWidth = width * 0.28;
+      const tankY = 20;
+      const tankHeight = height - 36;
+      const tankBottom = tankY + tankHeight;
+
+      const safeTop = tankY + tankHeight * (1 - SAFE_HIGH / 100);
+      const safeBottom = tankY + tankHeight * (1 - SAFE_LOW / 100);
+      ctx.fillStyle = "rgba(34, 197, 94, 0.16)";
+      ctx.fillRect(tankX - 12, safeTop, tankWidth + 24, safeBottom - safeTop);
+
+      ctx.strokeStyle = "rgba(214, 240, 255, 0.88)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(tankX, tankY, tankWidth, tankHeight);
+
+      const fillHeight = tankHeight * (sim.level / 100);
+      const fillY = tankBottom - fillHeight;
+
+      const oilGradient = ctx.createLinearGradient(0, fillY, 0, tankBottom);
+      oilGradient.addColorStop(0, "rgba(248, 177, 53, 0.95)");
+      oilGradient.addColorStop(1, "rgba(158, 102, 25, 0.95)");
+      ctx.fillStyle = oilGradient;
+      ctx.fillRect(tankX + 1, fillY, tankWidth - 2, fillHeight);
+
+      // Add a small animated wave at the liquid surface for visual motion.
+      const waveAmplitude = 2.5;
+      const waveLength = Math.max(14, tankWidth / 3.2);
+      const time = timestamp * 0.004;
+      ctx.beginPath();
+      ctx.moveTo(tankX + 1, fillY);
+      for (let x = tankX + 1; x <= tankX + tankWidth - 1; x += 2) {
+        const y = fillY + Math.sin((x / waveLength) + time) * waveAmplitude;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(tankX + tankWidth - 1, fillY + 6);
+      ctx.lineTo(tankX + 1, fillY + 6);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255, 223, 161, 0.35)";
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(199, 230, 255, 0.9)";
+      ctx.font = "600 13px 'IBM Plex Sans'";
+      ctx.textAlign = "left";
+      ctx.fillText("100%", tankX + tankWidth + 16, tankY + 4);
+      ctx.fillText("70%", tankX + tankWidth + 16, safeTop + 4);
+      ctx.fillText("30%", tankX + tankWidth + 16, safeBottom + 4);
+      ctx.fillText("0%", tankX + tankWidth + 16, tankBottom + 4);
+    }
+
+    function drawPressureGauge() {
+      const { ctx, width, height } = fitCanvas(pressureCanvas);
+      ctx.clearRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height * 0.73;
+      const radius = Math.min(width, height) * 0.37;
+      const startAngle = -Math.PI * 0.78;
+      const endAngle = Math.PI * 0.78;
+
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+
+      function ringSegment(fromPct, toPct, color) {
+        const a0 = startAngle + (endAngle - startAngle) * fromPct;
+        const a1 = startAngle + (endAngle - startAngle) * toPct;
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.arc(centerX, centerY, radius, a0, a1);
+        ctx.stroke();
+      }
+
+      ringSegment(0.0, 0.45, "rgba(34, 197, 94, 0.9)");
+      ringSegment(0.45, 0.72, "rgba(245, 158, 11, 0.9)");
+      ringSegment(0.72, 1.0, "rgba(239, 68, 68, 0.9)");
+
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = "rgba(218, 240, 255, 0.8)";
+      for (let i = 0; i <= 10; i += 1) {
+        const pct = i / 10;
+        const angle = startAngle + (endAngle - startAngle) * pct;
+        const inner = radius - 18;
+        const outer = radius + 4;
+        const x0 = centerX + inner * Math.cos(angle);
+        const y0 = centerY + inner * Math.sin(angle);
+        const x1 = centerX + outer * Math.cos(angle);
+        const y1 = centerY + outer * Math.sin(angle);
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+
+      const needlePct = clamp(sim.pressure / 100, 0, 1);
+      const needleAngle = startAngle + (endAngle - startAngle) * needlePct;
+      const nx = centerX + (radius - 24) * Math.cos(needleAngle);
+      const ny = centerY + (radius - 24) * Math.sin(needleAngle);
+
+      ctx.strokeStyle = "rgba(233, 248, 255, 0.95)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(nx, ny);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(2, 17, 27, 0.96)";
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(210, 241, 255, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(220, 242, 255, 0.92)";
+      ctx.font = "600 12px 'IBM Plex Sans'";
+      ctx.textAlign = "center";
+      ctx.fillText("0", centerX - radius + 6, centerY + 14);
+      ctx.fillText("10 bar", centerX + radius - 2, centerY + 14);
+    }
+
+    function setCoach(type, title, message) {
+      coachPanel.classList.remove("coach-good", "coach-warn", "coach-bad");
+      if (type === "good") {
+        coachPanel.classList.add("coach-good");
+      } else if (type === "warn") {
+        coachPanel.classList.add("coach-warn");
+      } else if (type === "bad") {
+        coachPanel.classList.add("coach-bad");
+      }
+
+      coachTitle.textContent = title;
+      coachText.textContent = message;
+    }
+
+    function applyAction(action) {
+      sim.selectedAction = action;
+      actionButtons.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.action === action);
+      });
+
+      if (action === "slow") {
+        sim.oilValveTarget = 75;
+        setCoach(
+          "good",
+          "AI Explanation: Good Move",
+          "Correct. Smooth opening reduces level without upsetting downstream."
+        );
+      } else if (action === "gas") {
+        sim.gasValveTarget = 15;
+        setCoach(
+          "bad",
+          "AI Explanation: Wrong Loop",
+          "Wrong control loop; gas valve does not directly control oil level. Pressure rises while level keeps increasing."
+        );
+      } else if (action === "none") {
+        setCoach(
+          "bad",
+          "AI Explanation: Unsafe Inaction",
+          "Doing nothing during an inlet surge lets level keep rising toward a high-level trip."
+        );
+      } else if (action === "full") {
+        sim.oilValveTarget = 100;
+        setCoach(
+          "warn",
+          "AI Explanation: Too Aggressive",
+          "Opening oil valve to 100% drops level fast, but it can upset downstream units and cause control instability."
+        );
+      }
+    }
+
+    function updateReadouts() {
+      levelValue.textContent = `Level: ${sim.level.toFixed(1)}%`;
+      const pressureBar = sim.pressure * 0.1;
+      pressureValue.textContent = `Pressure: ${pressureBar.toFixed(1)} bar`;
+
+      inletFlowVal.textContent = `${sim.inletFlow.toFixed(1)}%`;
+      oilValveVal.textContent = `${sim.oilValve.toFixed(1)}%`;
+      gasValveVal.textContent = `${sim.gasValve.toFixed(1)}%`;
+
+      levelStatus.classList.remove("status-safe", "status-warn", "status-danger");
+      if (sim.level >= SAFE_LOW && sim.level <= SAFE_HIGH) {
+        levelStatus.classList.add("status-safe");
+        levelStatus.textContent = "In safe band";
+      } else if ((sim.level >= 25 && sim.level < SAFE_LOW) || (sim.level > SAFE_HIGH && sim.level <= 75)) {
+        levelStatus.classList.add("status-warn");
+        levelStatus.textContent = "Near limit";
+      } else {
+        levelStatus.classList.add("status-danger");
+        levelStatus.textContent = "Unsafe level";
+      }
+    }
+
+    function showSurgeAlert() {
+      surgeAlert.classList.add("show");
+      clearTimeout(showSurgeAlert.timerId);
+      showSurgeAlert.timerId = setTimeout(() => {
+        surgeAlert.classList.remove("show");
+      }, 5000);
+    }
+
+    // Disturbance event requested in the scenario.
+    setTimeout(() => {
+      sim.disturbanceActive = true;
+      sim.inletFlowTarget = 78;
+      showSurgeAlert();
+      setCoach("warn", "AI Explanation: Disturbance Started", "Inlet flow surge detected. Choose an action to keep level in safe band.");
+    }, 3000);
+
+    actionButtons.forEach((button) => {
+      button.addEventListener("click", () => applyAction(button.dataset.action));
+    });
+
+    closeLessonBtn.addEventListener("click", () => lessonOverlay.classList.remove("open"));
+    openLessonBtn.addEventListener("click", () => lessonOverlay.classList.add("open"));
+
+    const safeBandPlugin = {
+      id: "safeBandPlugin",
+      beforeDatasetsDraw(chart) {
+        const chartArea = chart.chartArea;
+        const yScale = chart.scales.y;
+        if (!chartArea || !yScale) {
+          return;
+        }
+
+        const yTop = yScale.getPixelForValue(SAFE_HIGH);
+        const yBottom = yScale.getPixelForValue(SAFE_LOW);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = "rgba(34, 197, 94, 0.12)";
+        ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yBottom - yTop);
+        ctx.restore();
+      }
+    };
+
+    Chart.register(safeBandPlugin);
+
+    const trendChart = new Chart(document.getElementById("trendChart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Level (%)",
+            data: [],
+            borderColor: "#38bdf8",
+            backgroundColor: "rgba(56, 189, 248, 0.2)",
+            yAxisID: "y",
+            pointRadius: 0,
+            borderWidth: 2.2,
+            tension: 0.26
+          },
+          {
+            label: "Pressure (%)",
+            data: [],
+            borderColor: "#f59e0b",
+            backgroundColor: "rgba(245, 158, 11, 0.18)",
+            yAxisID: "y",
+            pointRadius: 0,
+            borderWidth: 2.2,
+            tension: 0.26
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        interaction: {
+          mode: "index",
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: "#d9f0ff",
+              font: {
+                family: "IBM Plex Sans",
+                size: 12
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                return `${context.dataset.label}: ${Number(context.raw).toFixed(1)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: "rgba(175, 214, 238, 0.1)"
+            },
+            ticks: {
+              color: "#cce9ff",
+              maxTicksLimit: 9
+            }
+          },
+          y: {
+            min: 0,
+            max: 100,
+            grid: {
+              color: "rgba(175, 214, 238, 0.1)"
+            },
+            ticks: {
+              color: "#cce9ff"
+            },
+            title: {
+              display: true,
+              text: "Percent (%)",
+              color: "#cce9ff"
+            }
+          }
+        }
+      }
+    });
+
+    function updateTrend() {
+      const label = `${sim.time.toFixed(1)}s`;
+      trendChart.data.labels.push(label);
+      trendChart.data.datasets[0].data.push(sim.level);
+      trendChart.data.datasets[1].data.push(sim.pressure);
+
+      const maxPoints = 80;
+      if (trendChart.data.labels.length > maxPoints) {
+        trendChart.data.labels.shift();
+        trendChart.data.datasets[0].data.shift();
+        trendChart.data.datasets[1].data.shift();
+      }
+
+      trendChart.update("none");
+    }
+
+    // Process model loop: valves move smoothly and process variables evolve continuously.
+    function updateSimulation(dt) {
+      sim.inletFlow = approach(sim.inletFlow, sim.inletFlowTarget, 10, dt);
+      sim.oilValve = approach(sim.oilValve, sim.oilValveTarget, 22, dt);
+      sim.gasValve = approach(sim.gasValve, sim.gasValveTarget, 16, dt);
+
+      const pressureTarget = clamp(
+        15 +
+          0.18 * sim.inletFlow +
+          0.3 * (100 - sim.gasValve) +
+          0.05 * sim.level -
+          0.08 * sim.oilValve,
+        8,
+        95
+      );
+      sim.pressure = approach(sim.pressure, pressureTarget, 24, dt);
+
+      const pressureOutletPenalty = 1 - 0.0015 * Math.max(0, sim.pressure - 45);
+      const outletLiquid = sim.oilValve * clamp(pressureOutletPenalty, 0.7, 1.05);
+      const levelTrend = (sim.inletFlow - outletLiquid) / 22;
+      const mildSelfBalance = (50 - sim.level) * 0.025;
+      sim.level = clamp(sim.level + (levelTrend + mildSelfBalance) * dt, 0, 100);
+    }
+
+    let trendAccumulator = 0;
+
+    function frame(timestamp) {
+      let dt = (timestamp - sim.lastFrameTime) / 1000;
+      sim.lastFrameTime = timestamp;
+      dt = clamp(dt, 0.001, 0.06);
+      sim.time += dt;
+
+      updateSimulation(dt);
+      updateReadouts();
+      drawLevelGauge(timestamp);
+      drawPressureGauge();
+
+      trendAccumulator += dt;
+      if (trendAccumulator >= 0.4) {
+        trendAccumulator = 0;
+        updateTrend();
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    updateReadouts();
+    updateTrend();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

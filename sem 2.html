@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Well Control - Kick Detection Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --bg: #061018;
+      --panel: #0d1e2a;
+      --panel-2: #122838;
+      --border: #30506a;
+      --txt: #d9ecf8;
+      --muted: #8aa7ba;
+      --ok: #1fba6b;
+      --warn: #f3aa2a;
+      --bad: #ff4f4f;
+      --cyan: #3ac8ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--txt);
+      font-family: "Rajdhani", sans-serif;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 8% -10%, #25455d 0%, transparent 42%),
+        radial-gradient(circle at 95% 0%, #1d364c 0%, transparent 46%),
+        linear-gradient(145deg, #030910, var(--bg));
+    }
+    .app { width: min(1360px, 96vw); margin: 16px auto 22px; display: grid; gap: 12px; }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: linear-gradient(165deg, rgba(13, 30, 42, 0.96), rgba(18, 40, 56, 0.88));
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35);
+      padding: 12px;
+    }
+    h1, h2, h3 { margin: 0; font-family: "Orbitron", sans-serif; letter-spacing: .02em; }
+    h1 { font-size: clamp(1.05rem, 2.2vw, 1.7rem); }
+    h2 { font-size: 0.98rem; }
+    .top p { margin: 4px 0 0; color: var(--muted); }
+    .objectives { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+    .objectives li {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #2d5f7c;
+      background: rgba(20, 67, 94, 0.6);
+      font-weight: 600;
+    }
+    .layout { display: grid; gap: 12px; grid-template-columns: 2fr 1fr; align-items: start; }
+    .rig-stage {
+      border: 1px solid #36566f;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #0a1a24, #0f2735 70%, #163243);
+      padding: 8px;
+    }
+    #rigSvg { width: 100%; height: 250px; display: block; }
+    .status-row { margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    .alarm-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #3a5b71;
+      background: rgba(5, 13, 20, 0.72);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 700;
+    }
+    .light {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, .26);
+    }
+    .light.green { background: var(--ok); box-shadow: 0 0 12px rgba(31, 186, 107, .75); }
+    .light.yellow { background: var(--warn); box-shadow: 0 0 12px rgba(243, 170, 42, .78); animation: pulse 1.25s infinite; }
+    .light.red { background: var(--bad); box-shadow: 0 0 13px rgba(255, 79, 79, .82); animation: flash .52s infinite; }
+    .status {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .status.warn { color: #ffd084; }
+    .status.bad { color: #ff9b9b; }
+    .status.ok { color: #9de7c2; }
+    .metrics { margin-top: 10px; display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+    .m-card {
+      border: 1px solid #335670;
+      border-radius: 10px;
+      padding: 8px;
+      background: linear-gradient(180deg, rgba(9, 24, 35, .92), rgba(12, 27, 40, .76));
+    }
+    .m-title { text-align: center; font-weight: 700; margin-bottom: 5px; color: #d6ecfa; }
+    canvas.gauge { width: 100%; max-width: 210px; height: auto; display: block; margin: 0 auto; }
+    .pit-wrap { margin-top: 10px; display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    .tank-box, .pit-read {
+      border: 1px solid #335670;
+      border-radius: 10px;
+      background: rgba(7, 21, 31, .86);
+      padding: 10px;
+    }
+    .tank {
+      margin-top: 8px;
+      width: 76px;
+      height: 168px;
+      border: 2px solid #92b6cb;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(57, 73, 84, .24), rgba(4, 12, 20, .72));
+      position: relative;
+      overflow: hidden;
+    }
+    .tank-level {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 50%;
+      background: linear-gradient(180deg, rgba(64, 190, 255, .86), rgba(15, 119, 187, .95));
+      transition: height .24s linear;
+    }
+    .tank-level::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      right: -10px;
+      top: -7px;
+      height: 11px;
+      border-radius: 42%;
+      background: rgba(190, 236, 255, .8);
+      animation: wave 1.9s linear infinite;
+    }
+    .r-label { color: var(--muted); font-size: .95rem; margin-top: 4px; }
+    .r-value { font-size: 1.34rem; font-weight: 700; letter-spacing: .02em; }
+    .chart-wrap { margin-top: 10px; height: 215px; }
+    .controls { display: grid; gap: 10px; align-content: start; }
+    .btns { display: grid; gap: 7px; }
+    .btn {
+      border: 1px solid #40627d;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #15374f, #102a3d);
+      color: #d9ecf8;
+      padding: 9px;
+      font-size: 1rem;
+      font-family: "Rajdhani", sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .14s ease, border-color .14s ease;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); border-color: #6ca7cb; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn.primary { border-color: #2bb68d; background: linear-gradient(180deg, #1b624f, #154537); }
+    .score, .box {
+      border: 1px solid #335670;
+      border-radius: 10px;
+      background: rgba(7, 21, 31, .88);
+      padding: 10px;
+    }
+    .score-num { font-size: 2.1rem; font-weight: 700; line-height: 1; color: #95e8be; }
+    .box p { margin: 0; }
+    .explain-list { margin: 7px 0 0; padding-left: 18px; }
+    .explain-list li { margin: 4px 0; }
+    .reset {
+      border: 1px solid #5d86a3;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #1c415d, #17384f);
+      color: #d9ecf8;
+      padding: 9px;
+      font-family: "Rajdhani", sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .flow { stroke-dasharray: 10 8; animation: dash 1.5s linear infinite; }
+    .flow.low { opacity: .28; }
+    @keyframes dash { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -35; } }
+    @keyframes flash { 0%,100% { opacity: 1; } 50% { opacity: .36; filter: brightness(1.42); } }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(.9); } }
+    @keyframes wave { from { transform: translateX(-6px); } to { transform: translateX(6px); } }
+    @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) {
+      .metrics { grid-template-columns: 1fr; }
+      .pit-wrap { grid-template-columns: 1fr; }
+      .objectives li { width: 100%; }
+    }
+    .back-btn {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--txt);
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--panel);
+      transition: background 0.2s;
+    }
+    .back-btn:hover {
+      background: rgba(48, 80, 106, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel top">
+      <a href="index.html" class="back-btn">← Back to Exhibition</a>
+      <h1>Well Control - Kick Detection and Shut-In Procedure</h1>
+      <p>Interactive control-room simulation for oil and gas training.</p>
+      <ul class="objectives">
+        <li>Identify kick indicators.</li>
+        <li>Apply correct shut-in procedure.</li>
+        <li>Understand risk escalation.</li>
+      </ul>
+    </section>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Visual Rig Panel</h2>
+        <div class="rig-stage">
+          <svg id="rigSvg" viewBox="0 0 700 280" role="img" aria-label="Animated drilling rig view">
+            <defs>
+              <linearGradient id="steel" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#6d8395" />
+                <stop offset="100%" stop-color="#354a5b" />
+              </linearGradient>
+            </defs>
+            <rect x="0" y="220" width="700" height="60" fill="#18374a" />
+            <rect x="20" y="198" width="390" height="16" rx="4" fill="#315066" />
+            <rect x="72" y="38" width="14" height="180" fill="url(#steel)" />
+            <rect x="216" y="38" width="14" height="180" fill="url(#steel)" />
+            <line x1="79" y1="38" x2="223" y2="38" stroke="#7f97aa" stroke-width="4" />
+            <line x1="79" y1="38" x2="223" y2="218" stroke="#7f97aa" stroke-width="3" />
+            <line x1="223" y1="38" x2="79" y2="218" stroke="#7f97aa" stroke-width="3" />
+            <line x1="104" y1="66" x2="198" y2="66" stroke="#6f889d" />
+            <line x1="94" y1="95" x2="208" y2="95" stroke="#6f889d" />
+            <line x1="85" y1="124" x2="216" y2="124" stroke="#6f889d" />
+            <line x1="78" y1="153" x2="223" y2="153" stroke="#6f889d" />
+            <line x1="74" y1="182" x2="227" y2="182" stroke="#6f889d" />
+
+            <rect x="140" y="50" width="20" height="160" fill="#3d5668" />
+            <rect id="travBlock" x="132" y="69" width="36" height="16" rx="3" fill="#c5d4de" />
+            <line x1="150" y1="38" x2="150" y2="69" stroke="#c5d4de" stroke-width="2" />
+            <rect id="drillPipe" x="146" y="86" width="8" height="132" fill="#8da8ba" />
+
+            <rect x="126" y="220" width="48" height="26" rx="4" fill="#2b3d4c" />
+            <rect x="300" y="225" width="96" height="22" rx="5" fill="#2b3d4c" />
+            <rect id="bopLeft" x="333" y="229" width="17" height="14" rx="2" fill="#f3853d" />
+            <rect id="bopRight" x="349" y="229" width="17" height="14" rx="2" fill="#f3853d" />
+            <text x="348" y="221" fill="#acc4d6" font-size="10" text-anchor="middle">BOP</text>
+
+            <line id="pipeIn" class="flow" x1="18" y1="206" x2="120" y2="206" stroke="#2bd3ff" stroke-width="4" />
+            <line x1="120" y1="206" x2="120" y2="235" stroke="#2bd3ff" stroke-width="4" />
+            <line id="pipeOut" class="flow" x1="396" y1="235" x2="540" y2="235" stroke="#ffc04a" stroke-width="4" />
+
+            <circle cx="42" cy="206" r="12" fill="#28485c" />
+            <g id="rotor">
+              <circle cx="42" cy="206" r="8" fill="#8caabd" />
+              <line x1="42" y1="198" x2="42" y2="214" stroke="#203a4c" stroke-width="2.1" />
+            </g>
+            <text x="42" y="186" text-anchor="middle" fill="#9cb8cb" font-size="10">PUMP</text>
+
+            <rect x="540" y="214" width="140" height="46" rx="7" fill="#1d3546" />
+            <text x="610" y="228" text-anchor="middle" fill="#afc6d7" font-size="10">RETURNS</text>
+            <line x1="554" y1="238" x2="666" y2="238" stroke="#6ea8ca" stroke-width="3" />
+            <line x1="554" y1="247" x2="666" y2="247" stroke="#6ea8ca" stroke-width="3" />
+          </svg>
+
+          <div class="status-row">
+            <div class="alarm-box">
+              <div id="alarmLight" class="light green"></div>
+              <span>Alarm:</span>
+              <span id="alarmText">Normal</span>
+            </div>
+            <div id="statusText" class="status">Normal drilling mode: parameters stable.</div>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="m-card">
+            <div class="m-title">Flow In (gpm)</div>
+            <canvas id="gFlowIn" class="gauge" width="210" height="210"></canvas>
+          </div>
+          <div class="m-card">
+            <div class="m-title">Flow Out (gpm)</div>
+            <canvas id="gFlowOut" class="gauge" width="210" height="210"></canvas>
+          </div>
+          <div class="m-card">
+            <div class="m-title">Standpipe Pressure (psi)</div>
+            <canvas id="gPress" class="gauge" width="210" height="210"></canvas>
+          </div>
+        </div>
+
+        <div class="pit-wrap">
+          <div class="tank-box">
+            <h2>Pit Volume Tank</h2>
+            <div class="tank"><div id="tankLevel" class="tank-level"></div></div>
+          </div>
+          <div class="pit-read">
+            <div class="r-label">Pit Volume (bbl)</div>
+            <div id="pitVal" class="r-value">50.0</div>
+            <div class="r-label">Flow Out - Flow In</div>
+            <div id="imbVal" class="r-value">0.0 gpm</div>
+            <div class="r-label">Simulation Time</div>
+            <div id="timeVal" class="r-value">00:00</div>
+          </div>
+        </div>
+
+        <section class="panel" style="margin-top:10px;">
+          <h2>Pressure Trend</h2>
+          <div class="chart-wrap">
+            <canvas id="trend"></canvas>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel controls">
+        <h2>User Decision Panel</h2>
+        <div class="btns">
+          <button class="btn primary" data-action="shut">Shut in well (close BOP)</button>
+          <button class="btn" data-action="continue">Continue drilling</button>
+          <button class="btn" data-action="pumpUp">Increase pump speed</button>
+          <button class="btn" data-action="ignore">Ignore alarm</button>
+        </div>
+
+        <div class="score">
+          <div class="r-label">Safety Score</div>
+          <div id="scoreVal" class="score-num">100</div>
+          <div id="scoreNote" class="r-label">No penalty applied.</div>
+        </div>
+
+        <div class="box">
+          <h3>Training Mode Explanation</h3>
+          <div id="explain"><p>Wait for the kick event, then decide.</p></div>
+        </div>
+
+        <div class="box">
+          <h3>Final Evaluation Summary</h3>
+          <div id="summary"><p>Awaiting user decision.</p></div>
+        </div>
+
+        <button id="reset" class="reset">Reset Scenario</button>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      class Gauge {
+        constructor(canvas, cfg) {
+          this.ctx = canvas.getContext("2d");
+          this.min = cfg.min;
+          this.max = cfg.max;
+          this.unit = cfg.unit;
+          this.color = cfg.color;
+          this.zones = cfg.zones;
+          this.w = canvas.width;
+          this.h = canvas.height;
+        }
+        ang(v) {
+          const r = (clamp(v, this.min, this.max) - this.min) / (this.max - this.min);
+          return Math.PI * 0.75 + r * Math.PI * 1.5;
+        }
+        draw(v) {
+          const c = this.ctx;
+          const cx = this.w / 2, cy = this.h / 2 + 14, r = Math.min(this.w, this.h) * 0.36;
+          c.clearRect(0, 0, this.w, this.h);
+          c.beginPath(); c.arc(cx, cy, r + 20, 0, Math.PI * 2); c.fillStyle = "#08131d"; c.fill();
+          c.lineWidth = 11; c.lineCap = "round";
+          this.zones.forEach((z) => { c.beginPath(); c.strokeStyle = z.c; c.arc(cx, cy, r, this.ang(z.f), this.ang(z.t)); c.stroke(); });
+          c.lineWidth = 3; c.strokeStyle = "#6f90a5"; c.beginPath(); c.arc(cx, cy, r + 8, Math.PI * .75, Math.PI * 2.25); c.stroke();
+          c.fillStyle = "#9bb3c5"; c.font = "12px Rajdhani, sans-serif"; c.textAlign = "center";
+          for (let i = 0; i <= 6; i += 1) {
+            const tv = this.min + (i / 6) * (this.max - this.min), a = this.ang(tv);
+            const xo = cx + Math.cos(a) * (r + 8), yo = cy + Math.sin(a) * (r + 8);
+            const xi = cx + Math.cos(a) * (r - 5), yi = cy + Math.sin(a) * (r - 5);
+            c.strokeStyle = "#8aa5b9"; c.lineWidth = 2; c.beginPath(); c.moveTo(xi, yi); c.lineTo(xo, yo); c.stroke();
+            c.fillText(Math.round(tv), cx + Math.cos(a) * (r + 20), cy + Math.sin(a) * (r + 20) + 4);
+          }
+          const a = this.ang(v);
+          c.strokeStyle = this.color; c.lineWidth = 4; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * (r - 14), cy + Math.sin(a) * (r - 14)); c.stroke();
+          c.beginPath(); c.arc(cx, cy, 7, 0, Math.PI * 2); c.fillStyle = "#d9ecf8"; c.fill();
+          c.font = "700 22px Orbitron, sans-serif"; c.fillStyle = "#e2f5ff"; c.fillText(v.toFixed(0), cx, cy + 55);
+          c.font = "700 12px Rajdhani, sans-serif"; c.fillStyle = "#8fb0c4"; c.fillText(this.unit, cx, cy + 73);
+        }
+      }
+
+      class Simulator {
+        constructor() {
+          this.dom = {
+            alarmLight: $("alarmLight"),
+            alarmText: $("alarmText"),
+            statusText: $("statusText"),
+            tankLevel: $("tankLevel"),
+            pitVal: $("pitVal"),
+            imbVal: $("imbVal"),
+            timeVal: $("timeVal"),
+            scoreVal: $("scoreVal"),
+            scoreNote: $("scoreNote"),
+            explain: $("explain"),
+            summary: $("summary"),
+            buttons: [...document.querySelectorAll(".btn[data-action]")],
+            reset: $("reset"),
+            rotor: $("rotor"),
+            travBlock: $("travBlock"),
+            bopLeft: $("bopLeft"),
+            bopRight: $("bopRight"),
+            pipeIn: $("pipeIn"),
+            pipeOut: $("pipeOut")
+          };
+
+          this.gIn = new Gauge($("gFlowIn"), { min: 0, max: 700, unit: "gpm", color: "#33d0ff", zones: [{ f: 0, t: 520, c: "#1ab573" }, { f: 520, t: 620, c: "#f3aa2a" }, { f: 620, t: 700, c: "#ff4f4f" }] });
+          this.gOut = new Gauge($("gFlowOut"), { min: 0, max: 700, unit: "gpm", color: "#ffbf50", zones: [{ f: 0, t: 520, c: "#1ab573" }, { f: 520, t: 620, c: "#f3aa2a" }, { f: 620, t: 700, c: "#ff4f4f" }] });
+          this.gPr = new Gauge($("gPress"), { min: 2500, max: 3500, unit: "psi", color: "#a6e3ff", zones: [{ f: 2500, t: 3050, c: "#ff4f4f" }, { f: 3050, t: 3340, c: "#1ab573" }, { f: 3340, t: 3500, c: "#f3aa2a" }] });
+
+          this.chart = new Chart($("trend").getContext("2d"), {
+            type: "line",
+            data: { labels: [], datasets: [{ label: "Standpipe Pressure (psi)", data: [], borderColor: "#5fd3ff", backgroundColor: "rgba(46,179,237,.17)", fill: true, pointRadius: 0, tension: .28 }] },
+            options: {
+              responsive: true, maintainAspectRatio: false, animation: false,
+              plugins: { legend: { labels: { color: "#cfe4f2", boxWidth: 10 } } },
+              scales: {
+                x: { ticks: { color: "#88a6bc", maxTicksLimit: 8 }, grid: { color: "rgba(136,166,188,.15)" } },
+                y: { ticks: { color: "#88a6bc" }, grid: { color: "rgba(136,166,188,.15)" } }
+              }
+            }
+          });
+
+          this.loop = this.loop.bind(this);
+          this.onDecision = this.onDecision.bind(this);
+          this.reset = this.reset.bind(this);
+          this.bind();
+          this.reset();
+        }
+
+        bind() {
+          this.dom.buttons.forEach((b) => b.addEventListener("click", () => this.onDecision(b.dataset.action)));
+          this.dom.reset.addEventListener("click", this.reset);
+        }
+
+        reset() {
+          this.s = {
+            t: 0,
+            phase: "normal",
+            decision: null,
+            done: false,
+            score: 100,
+            kickAt: null,
+            riskT: 0,
+            alarm: "green",
+            alarmTxt: "Normal",
+            status: "Normal drilling mode: parameters stable.",
+            qIn: 450, qOut: 448, p: 3200, pit: 50,
+            tqIn: 450, tqOut: 448, tp: 3200,
+            bop: 0
+          };
+          this.lastSec = -1;
+          this.chart.data.labels = [];
+          this.chart.data.datasets[0].data = [];
+          this.chart.update("none");
+          this.dom.buttons.forEach((b) => { b.disabled = true; });
+          this.dom.explain.innerHTML = "<p>Wait for the kick event, then decide.</p>";
+          this.dom.summary.innerHTML = "<p>Awaiting user decision.</p>";
+          this.dom.scoreNote.textContent = "No penalty applied.";
+          cancelAnimationFrame(this.raf);
+          this.prev = performance.now();
+          this.raf = requestAnimationFrame(this.loop);
+        }
+
+        loop(ts) {
+          const dt = clamp((ts - this.prev) / 1000, 0, 0.25);
+          this.prev = ts;
+          this.update(dt);
+          this.render();
+          this.raf = requestAnimationFrame(this.loop);
+        }
+
+        // Core scenario logic:
+        // - normal drilling starts immediately
+        // - after 5s kick indicators appear
+        // - user decision branches to shut-in or escalation path
+        update(dt) {
+          const s = this.s;
+          s.t += dt;
+          if (s.phase === "normal" && s.t >= 5) this.triggerKick();
+          if (s.phase === "normal") this.normal();
+          else if (s.phase === "kick") this.kick(dt);
+          else if (s.phase === "shut") this.shut(dt);
+          else if (s.phase === "risk") this.risk(dt);
+          else this.resolved();
+
+          s.qIn = lerp(s.qIn, s.tqIn, clamp(dt * 2.8, 0, 1));
+          s.qOut = lerp(s.qOut, s.tqOut, clamp(dt * 2.8, 0, 1));
+          s.p = lerp(s.p, s.tp, clamp(dt * 1.8, 0, 1));
+          s.pit = clamp(s.pit, 0, 100);
+
+          const sec = Math.floor(s.t);
+          if (sec !== this.lastSec) {
+            this.lastSec = sec;
+            this.chart.data.labels.push(sec + "s");
+            this.chart.data.datasets[0].data.push(Number(s.p.toFixed(1)));
+            if (this.chart.data.labels.length > 45) {
+              this.chart.data.labels.shift();
+              this.chart.data.datasets[0].data.shift();
+            }
+            this.chart.update("none");
+          }
+        }
+
+        normal() {
+          const s = this.s, w = Math.sin(s.t * 1.2);
+          s.tqIn = 450 + w * 4;
+          s.tqOut = 448 + w * 3;
+          s.tp = 3200 + Math.sin(s.t * 0.8) * 12;
+          s.pit = clamp(50 + Math.sin(s.t * 0.4) * 0.4, 49.3, 50.7);
+        }
+
+        triggerKick() {
+          const s = this.s;
+          // Kick event onset: classic indicators appear together.
+          s.phase = "kick";
+          s.kickAt = s.t;
+          s.alarm = "yellow";
+          s.alarmTxt = "Warning";
+          s.status = "Possible Kick Detected";
+          this.dom.buttons.forEach((b) => { b.disabled = false; });
+        }
+
+        kick(dt) {
+          const s = this.s;
+          s.tqIn = 450 + Math.sin(s.t) * 6;
+          s.tqOut = 550 + Math.sin(s.t * 1.3) * 10;
+          s.tp = 3070 + Math.sin(s.t * 0.9) * 8;
+          s.pit += 0.9 * dt;
+        }
+
+        onDecision(action) {
+          const s = this.s;
+          if (s.decision) return;
+          s.decision = action;
+          this.dom.buttons.forEach((b) => { b.disabled = true; });
+          if (action === "shut") this.correct();
+          else this.wrong(action);
+        }
+
+        correct() {
+          const s = this.s;
+          // Correct response path: shut-in closes BOP and drives flow to zero.
+          s.phase = "shut";
+          s.alarm = "yellow";
+          s.alarmTxt = "Mitigating";
+          s.status = "Shut-in initiated: closing BOP.";
+          this.dom.explain.innerHTML = `
+            <p>Correct response. Key points:</p>
+            <ul class="explain-list">
+              <li>Flow out greater than flow in, with pit gain, indicates a formation kick.</li>
+              <li>Shutting in closes the BOP and isolates formation pressure from surface systems.</li>
+              <li>Increasing pump speed during a kick is dangerous and can worsen well control.</li>
+            </ul>`;
+        }
+
+        wrong(action) {
+          const s = this.s;
+          // Wrong response path: influx grows, alarm escalates to critical.
+          const penalty = { continue: 24, pumpUp: 36, ignore: 30 }[action] || 25;
+          s.score = clamp(s.score - penalty, 0, 100);
+          s.phase = "risk";
+          s.alarm = "red";
+          s.alarmTxt = "Critical";
+          s.status = "Blowout Risk Increasing";
+          s.riskT = 0;
+          this.dom.scoreNote.textContent = "Penalty applied for unsafe decision.";
+          this.dom.explain.innerHTML = `
+            <p>This is unsafe under kick indicators:</p>
+            <ul class="explain-list">
+              <li>Flow imbalance and rising pit volume show influx entering the wellbore.</li>
+              <li>Immediate shut-in is required to isolate pressure and stop escalation.</li>
+              <li>Increasing pump speed can hide or intensify kick behavior and risk.</li>
+            </ul>`;
+        }
+
+        shut(dt) {
+          const s = this.s;
+          s.bop = clamp(s.bop + dt * 0.45, 0, 1);
+          s.tqIn = 0;
+          s.tqOut = 0;
+          s.tp = 3110 + Math.sin(s.t * 0.7) * 3;
+          s.pit += 0.03 * dt;
+          if (s.bop >= 1 && !s.done) {
+            s.done = true;
+            s.phase = "done";
+            s.alarm = "green";
+            s.alarmTxt = "Secured";
+            s.status = "Well shut in successfully. Pressure stabilized.";
+            this.summary(true);
+          }
+        }
+
+        risk(dt) {
+          const s = this.s;
+          s.riskT += dt;
+          if (s.decision === "pumpUp") { s.tqIn = 560; s.tqOut = 660; s.tp = 2960; s.pit += 1.85 * dt; }
+          else if (s.decision === "continue") { s.tqIn = 455; s.tqOut = 620; s.tp = 3000; s.pit += 1.5 * dt; }
+          else { s.tqIn = 445; s.tqOut = 625; s.tp = 2980; s.pit += 1.65 * dt; }
+          if (s.riskT > 6 && !s.done) {
+            s.done = true;
+            s.phase = "done";
+            s.status = "Escalation complete: immediate shut-in required.";
+            this.summary(false);
+          }
+        }
+
+        resolved() {
+          const s = this.s;
+          if (s.decision === "shut") {
+            s.tqIn = 0; s.tqOut = 0; s.tp = 3110;
+          }
+        }
+
+        summary(ok) {
+          const s = this.s;
+          const rate = s.score >= 90 ? "Excellent" : s.score >= 75 ? "Acceptable" : "Needs Improvement";
+          if (ok) {
+            this.dom.summary.innerHTML = `<p><strong>Result:</strong> Kick controlled with correct shut-in.</p><p><strong>Score:</strong> ${s.score}/100 (${rate})</p><p>You recognized indicators and applied the right barrier action.</p>`;
+            this.dom.scoreNote.textContent = "Correct action: no penalty.";
+          } else {
+            this.dom.summary.innerHTML = `<p><strong>Result:</strong> Incorrect action allowed kick escalation.</p><p><strong>Score:</strong> ${s.score}/100 (${rate})</p><p>Kick signs require immediate shut-in to reduce blowout risk.</p>`;
+          }
+        }
+
+        render() {
+          const s = this.s;
+          this.gIn.draw(s.qIn);
+          this.gOut.draw(s.qOut);
+          this.gPr.draw(s.p);
+
+          this.dom.pitVal.textContent = s.pit.toFixed(1);
+          this.dom.imbVal.textContent = (s.qOut - s.qIn).toFixed(1) + " gpm";
+          this.dom.timeVal.textContent = String(Math.floor(s.t / 60)).padStart(2, "0") + ":" + String(Math.floor(s.t % 60)).padStart(2, "0");
+          this.dom.scoreVal.textContent = Math.round(s.score).toString();
+          this.dom.tankLevel.style.height = clamp(s.pit, 0, 100) + "%";
+
+          this.dom.alarmLight.className = "light " + s.alarm;
+          this.dom.alarmText.textContent = s.alarmTxt;
+          this.dom.statusText.textContent = s.status;
+          this.dom.statusText.classList.remove("warn", "bad", "ok");
+          if (s.alarm === "yellow") this.dom.statusText.classList.add("warn");
+          if (s.alarm === "red") this.dom.statusText.classList.add("bad");
+          if (s.alarm === "green" && s.decision === "shut") this.dom.statusText.classList.add("ok");
+
+          const a = s.t * Math.max(s.qIn * 0.1, 6);
+          this.dom.rotor.setAttribute("transform", `rotate(${a.toFixed(1)} 42 206)`);
+          this.dom.travBlock.setAttribute("y", (69 + Math.sin(s.t * 1.5) * 4).toFixed(2));
+          const lx = lerp(333, 341, s.bop), rx = lerp(349, 341, s.bop);
+          this.dom.bopLeft.setAttribute("x", lx.toFixed(2));
+          this.dom.bopRight.setAttribute("x", rx.toFixed(2));
+
+          this.dom.pipeIn.classList.toggle("low", s.qIn <= 40);
+          this.dom.pipeOut.classList.toggle("low", s.qOut <= 40);
+          this.dom.pipeIn.style.animationDuration = clamp(2.3 - (s.qIn / 700) * 1.7, 0.45, 2.3).toFixed(2) + "s";
+          this.dom.pipeOut.style.animationDuration = clamp(2.3 - (s.qOut / 700) * 1.7, 0.45, 2.3).toFixed(2) + "s";
+        }
+      }
+
+      new Simulator();
+    })();
+  </script>
+</body>
+</html>
