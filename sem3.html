@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Industrial Refinery Tank Viewer</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(9, 14, 28, 0.72);
+      --text: #d7e3ff;
+      --muted: #a8b6d8;
+      --border: rgba(180, 196, 232, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 15%, #101a33 0%, var(--bg) 45%, #060914 100%);
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(6, 10, 20, 0.35);
+      color: #f2f6ff;
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      letter-spacing: 0.04em;
+      transition: opacity 450ms ease, visibility 450ms ease;
+      z-index: 10;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    #loading.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #instructions {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      max-width: min(88vw, 360px);
+      font-size: 0.85rem;
+      line-height: 1.35;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+      z-index: 5;
+    }
+
+    #instructions strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    #status {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      padding: 8px 10px;
+      max-width: min(90vw, 520px);
+      font-size: 0.8rem;
+      line-height: 1.35;
+      color: var(--text);
+      background: rgba(8, 14, 30, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+      z-index: 12;
+      white-space: pre-wrap;
+    }
+
+    #panelToggle {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 13;
+      border: 1px solid var(--border);
+      background: rgba(10, 18, 38, 0.86);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    #eduPanel {
+      position: fixed;
+      top: 50px;
+      right: 12px;
+      width: min(360px, calc(100vw - 24px));
+      max-height: calc(100vh - 62px);
+      overflow: auto;
+      padding: 12px;
+      background: rgba(9, 14, 28, 0.86);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+      z-index: 13;
+      transition: transform 260ms ease, opacity 260ms ease;
+    }
+
+    #eduPanel.collapsed {
+      transform: translateX(calc(100% + 20px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel-title {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .panel-subtitle {
+      margin: 0 0 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .edu-section {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(8, 14, 30, 0.45);
+    }
+
+    .edu-section h3 {
+      margin: 0 0 8px;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .edu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .edu-k {
+      display: block;
+      color: #a6b6df;
+      font-size: 0.72rem;
+      margin-bottom: 2px;
+    }
+
+    .edu-v {
+      color: #f2f6ff;
+      font-weight: 600;
+      font-size: 0.83rem;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .control-row input[type="range"] {
+      width: 120px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: rgba(16, 24, 47, 0.88);
+      color: var(--text);
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: rgba(24, 37, 70, 0.95);
+    }
+
+    #stepTitle {
+      margin: 0 0 6px;
+      font-size: 0.86rem;
+      color: var(--text);
+    }
+
+    #stepBody {
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+
+    #hotspotLayer {
+      position: fixed;
+      inset: 0;
+      z-index: 11;
+      pointer-events: none;
+    }
+
+    .hotspot {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    .hotspot-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #84e3ff;
+      box-shadow: 0 0 10px rgba(132, 227, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .hotspot-label {
+      font-size: 0.75rem;
+      color: #f0f6ff;
+      background: rgba(6, 14, 30, 0.82);
+      border: 1px solid rgba(162, 188, 232, 0.35);
+      border-radius: 999px;
+      padding: 3px 8px;
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .hotspot.active .hotspot-dot {
+      background: #ffd36f;
+      box-shadow: 0 0 12px rgba(255, 211, 111, 0.95);
+    }
+
+    .hotspot.active .hotspot-label {
+      border-color: rgba(255, 211, 111, 0.8);
+      color: #fff5d7;
+    }
+
+    @media (max-width: 900px) {
+      #eduPanel {
+        max-height: calc(100vh - 72px);
+      }
+
+      #status {
+        max-width: min(70vw, 380px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="loading">Loading...</div>
+  <div id="status">Initializing viewer...</div>
+  <div id="instructions">
+    <strong>Controls</strong><br />
+    Left mouse: rotate<br />
+    Right mouse: pan<br />
+    Mouse wheel: zoom<br />
+    Auto-rotate starts on load
+  </div>
+  <button id="panelToggle" type="button">Learning Panel</button>
+  <aside id="eduPanel">
+    <h2 class="panel-title">Refinery Learning Console</h2>
+    <p class="panel-subtitle">Interactive model study mode for design review and training.</p>
+
+    <section class="edu-section">
+      <h3>Live Metrics</h3>
+      <div class="edu-grid">
+        <div>
+          <span class="edu-k">Mesh Count</span>
+          <span class="edu-v" id="meshCountValue">-</span>
+        </div>
+        <div>
+          <span class="edu-k">Approx. Diameter</span>
+          <span class="edu-v" id="diameterValue">-</span>
+        </div>
+        <div>
+          <span class="edu-k">Approx. Height</span>
+          <span class="edu-v" id="heightValue">-</span>
+        </div>
+        <div>
+          <span class="edu-k">Main Axis</span>
+          <span class="edu-v" id="axisValue">-</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="edu-section">
+      <h3>Interactive Controls</h3>
+      <label class="control-row">
+        <span>Show labels</span>
+        <input id="labelsToggle" type="checkbox" checked />
+      </label>
+      <label class="control-row">
+        <span>Auto rotate</span>
+        <input id="autoRotateToggle" type="checkbox" checked />
+      </label>
+      <label class="control-row">
+        <span>X-ray mode</span>
+        <input id="xrayToggle" type="checkbox" />
+      </label>
+      <label class="control-row">
+        <span>Wireframe mode</span>
+        <input id="wireframeToggle" type="checkbox" />
+      </label>
+      <label class="control-row">
+        <span>Light intensity</span>
+        <input id="lightRange" type="range" min="30" max="180" value="100" />
+      </label>
+      <div class="action-row">
+        <button class="action-btn" id="resetViewBtn" type="button">Reset View</button>
+        <button class="action-btn" id="tourFocusBtn" type="button">Focus Current Step</button>
+      </div>
+    </section>
+
+    <section class="edu-section">
+      <h3>Guided Walkthrough</h3>
+      <h4 id="stepTitle">Step 1</h4>
+      <p id="stepBody">Waiting for model load...</p>
+      <div class="action-row">
+        <button class="action-btn" id="stepPrevBtn" type="button">Previous</button>
+        <button class="action-btn" id="stepNextBtn" type="button">Next</button>
+      </div>
+    </section>
+
+    <section class="edu-section">
+      <h3>Operational Notes</h3>
+      <p id="learningNote" style="margin:0; font-size:0.79rem; color:var(--muted); line-height:1.35;">
+        Storage tanks require periodic integrity checks, pressure vent inspection, and nozzle support review.
+      </p>
+    </section>
+  </aside>
+  <div id="hotspotLayer"></div>
+
+  <script>
+    window.__viewerBooted = false;
+    window.__viewerReady = false;
+
+    setTimeout(() => {
+      const loading = document.getElementById("loading");
+      const status = document.getElementById("status");
+      if (!status) return;
+
+      if (!window.__viewerBooted) {
+        if (loading) loading.textContent = "Viewer bootstrap failed.";
+        status.textContent = "Module startup failed. Check internet/CDN access or browser module support.";
+        status.style.color = "#ffb5b5";
+        status.style.borderColor = "rgba(255,120,120,0.45)";
+        return;
+      }
+
+      if (!window.__viewerReady) {
+        status.textContent = "Viewer started but model is still loading. This OBJ is large; wait 20-60 seconds.";
+      }
+    }, 12000);
+
+    window.addEventListener("error", (event) => {
+      const loading = document.getElementById("loading");
+      const status = document.getElementById("status");
+      if (loading) loading.textContent = "Runtime error. Check details above.";
+      if (status) {
+        status.style.display = "block";
+        status.textContent = `Runtime error:\n${event.message || "Unknown error"}`;
+        status.style.color = "#ffb5b5";
+        status.style.borderColor = "rgba(255,120,120,0.45)";
+      }
+    });
+
+    window.addEventListener("unhandledrejection", (event) => {
+      const loading = document.getElementById("loading");
+      const status = document.getElementById("status");
+      const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason);
+      if (loading) loading.textContent = "Unhandled promise rejection.";
+      if (status) {
+        status.style.display = "block";
+        status.textContent = `Promise rejection:\n${reason}`;
+        status.style.color = "#ffb5b5";
+        status.style.borderColor = "rgba(255,120,120,0.45)";
+      }
+    });
+  </script>
+
+  <script type="module">
+    // ----------------------------
+    // Three.js and loader imports
+    // ----------------------------
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.161.0/+esm";
+    import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/OrbitControls.js/+esm";
+    import { MTLLoader } from "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/loaders/MTLLoader.js/+esm";
+    import { OBJLoader } from "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/loaders/OBJLoader.js/+esm";
+
+    window.__viewerBooted = true;
+
+    // ----------------------------
+    // Basic scene setup
+    // ----------------------------
+    const app = document.getElementById("app");
+    const loadingEl = document.getElementById("loading");
+    const statusEl = document.getElementById("status");
+    const panelToggleEl = document.getElementById("panelToggle");
+    const eduPanelEl = document.getElementById("eduPanel");
+    const hotspotLayerEl = document.getElementById("hotspotLayer");
+    const meshCountValueEl = document.getElementById("meshCountValue");
+    const diameterValueEl = document.getElementById("diameterValue");
+    const heightValueEl = document.getElementById("heightValue");
+    const axisValueEl = document.getElementById("axisValue");
+    const labelsToggleEl = document.getElementById("labelsToggle");
+    const autoRotateToggleEl = document.getElementById("autoRotateToggle");
+    const xrayToggleEl = document.getElementById("xrayToggle");
+    const wireframeToggleEl = document.getElementById("wireframeToggle");
+    const lightRangeEl = document.getElementById("lightRange");
+    const resetViewBtnEl = document.getElementById("resetViewBtn");
+    const tourFocusBtnEl = document.getElementById("tourFocusBtn");
+    const stepTitleEl = document.getElementById("stepTitle");
+    const stepBodyEl = document.getElementById("stepBody");
+    const stepPrevBtnEl = document.getElementById("stepPrevBtn");
+    const stepNextBtnEl = document.getElementById("stepNextBtn");
+    const learningNoteEl = document.getElementById("learningNote");
+    window.__debug = {};
+    const MODEL_IS_Z_UP = true;
+
+    const panelState = {
+      collapsed: window.innerWidth <= 900
+    };
+
+    if (panelState.collapsed) {
+      eduPanelEl.classList.add("collapsed");
+    }
+
+    panelToggleEl.addEventListener("click", () => {
+      panelState.collapsed = !panelState.collapsed;
+      eduPanelEl.classList.toggle("collapsed", panelState.collapsed);
+    });
+
+    const interactionState = {
+      showLabels: true,
+      xray: false,
+      wireframe: false,
+      stepIndex: 0
+    };
+
+    const tutorialSteps = [
+      {
+        id: "shell",
+        title: "Tank Shell",
+        body: "The shell stores product volume. Inspect shell deformation, corrosion zones, and weld seams during routine integrity checks.",
+        note: "Corrosion mapping and weld NDT are core shell reliability activities.",
+        relative: [0.56, 0.50, 0.58],
+        cameraOffset: [1.2, 0.45, 1.15]
+      },
+      {
+        id: "roof",
+        title: "Roof / Manway Zone",
+        body: "Roof fittings and manway access support venting and maintenance entry. Confirm seal condition and secure fastening.",
+        note: "Roof manways should be checked for gasket condition and fastener torque history.",
+        relative: [0.52, 0.74, 0.48],
+        cameraOffset: [0.9, 0.9, 0.5]
+      },
+      {
+        id: "nozzles",
+        title: "Nozzle Connections",
+        body: "Nozzles interface with process piping. Focus on load transfer, support alignment, and local stress around reinforcement pads.",
+        note: "Nozzle-support misalignment is a frequent source of local stress concentration.",
+        relative: [0.72, 0.52, 0.48],
+        cameraOffset: [1.35, 0.32, 0.3]
+      },
+      {
+        id: "foundation",
+        title: "Support / Foundation",
+        body: "Foundation contact controls settlement and stability. Monitor anchor conditions and pad settlement trends over time.",
+        note: "Uneven settlement can alter stress distribution and nozzle alignment.",
+        relative: [0.50, 0.24, 0.50],
+        cameraOffset: [1.0, 0.25, 1.0]
+      },
+      {
+        id: "safety",
+        title: "Safety Access Features",
+        body: "Access rails and elevated features support safe inspection routes. Verify continuity, guard condition, and clearance zones.",
+        note: "Safe access paths are part of operational readiness, not only maintenance scope.",
+        relative: [0.38, 0.66, 0.56],
+        cameraOffset: [-1.2, 0.6, 0.9]
+      }
+    ];
+
+    const hotspots = [];
+    const trackedMeshes = [];
+    const tempVecA = new THREE.Vector3();
+    const tempVecB = new THREE.Vector3();
+    const tempVecC = new THREE.Vector3();
+    let modelBounds = null;
+    let defaultView = null;
+    let focusTween = null;
+
+    function setStatus(message, isError = false) {
+      statusEl.style.display = "block";
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? "#ffb5b5" : "";
+      statusEl.style.borderColor = isError ? "rgba(255,120,120,0.45)" : "";
+    }
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#0b1020");
+    scene.fog = new THREE.Fog("#0b1020", 40, 140);
+
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(12, 8, 12);
+
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    } catch (err) {
+      console.error(err);
+      loadingEl.textContent = "WebGL initialization failed.";
+      setStatus("WebGL could not initialize in this browser/session.", true);
+      throw err;
+    }
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    app.appendChild(renderer.domElement);
+
+    // ----------------------------
+    // Camera controls
+    // ----------------------------
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.55;
+    controls.minDistance = 2;
+    controls.maxDistance = 300;
+    controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI * 0.495;
+
+    const disableAutoRotate = () => {
+      controls.autoRotate = false;
+      autoRotateToggleEl.checked = false;
+    };
+    renderer.domElement.addEventListener("pointerdown", disableAutoRotate);
+    renderer.domElement.addEventListener("wheel", disableAutoRotate, { passive: true });
+
+    // ----------------------------
+    // Lighting setup
+    // ----------------------------
+    const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+    sun.position.set(16, 24, 10);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 120;
+    sun.shadow.camera.left = -35;
+    sun.shadow.camera.right = 35;
+    sun.shadow.camera.top = 35;
+    sun.shadow.camera.bottom = -35;
+    sun.shadow.bias = -0.0002;
+    scene.add(sun);
+
+    // Optional subtle fill light for industrial mood.
+    const fill = new THREE.DirectionalLight(0x7ca6ff, 0.35);
+    fill.position.set(-12, 8, -16);
+    scene.add(fill);
+
+    const baseLight = {
+      ambient: ambient.intensity,
+      sun: sun.intensity,
+      fill: fill.intensity
+    };
+
+    // ----------------------------
+    // Ground plane to catch shadows
+    // ----------------------------
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.28 });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1.8;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Always-visible placeholder so the page is never blank while loading.
+    const loadingPlaceholder = new THREE.Mesh(
+      new THREE.TorusKnotGeometry(1.2, 0.32, 160, 20),
+      new THREE.MeshStandardMaterial({
+        color: 0x86a5d4,
+        metalness: 0.35,
+        roughness: 0.45
+      })
+    );
+    loadingPlaceholder.position.set(0, 2.2, 0);
+    loadingPlaceholder.castShadow = true;
+    loadingPlaceholder.receiveShadow = true;
+    scene.add(loadingPlaceholder);
+
+    // ----------------------------
+    // Loading manager UI updates
+    // ----------------------------
+    const manager = new THREE.LoadingManager();
+    manager.onProgress = (_url, loaded, total) => {
+      const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
+      loadingEl.textContent = pct >= 100 ? "Finalizing..." : `Loading... ${pct}%`;
+      if (!window.__viewerReady) {
+        setStatus(`Loading refinery model... ${pct}%`);
+      }
+    };
+    manager.onLoad = () => {};
+    manager.onError = (url) => {
+      loadingEl.textContent = `Failed to load: ${url}`;
+      setStatus(`Asset failed: ${url}`, true);
+    };
+
+    // ----------------------------
+    // Model loading with fallback
+    // ----------------------------
+    const modelCandidates = [
+      {
+        mtl: "3d object/oil-refinery-storage-tank-vst-500_obj.mtl",
+        obj: "3d object/oil-refinery-storage-tank-vst-500_obj.obj"
+      },
+      {
+        mtl: "refinery-storage-tank-vst-500_obj.mtl",
+        obj: "refinery-storage-tank-vst-500_obj.obj"
+      },
+      {
+        mtl: "oil-refinery-storage-tank-vst-500_obj.mtl",
+        obj: "oil-refinery-storage-tank-vst-500_obj.obj"
+      }
+    ];
+
+    function encodePath(path) {
+      return path
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+    }
+
+    function splitPath(path) {
+      const slash = path.lastIndexOf("/");
+      if (slash === -1) return { dir: "./", file: path };
+      return { dir: path.slice(0, slash + 1), file: path.slice(slash + 1) };
+    }
+
+    function loadPair(pair) {
+      return new Promise((resolve, reject) => {
+        const mtlParts = splitPath(encodePath(pair.mtl));
+        const objParts = splitPath(encodePath(pair.obj));
+
+        const mtlLoader = new MTLLoader(manager);
+        mtlLoader.setPath(mtlParts.dir);
+        mtlLoader.setResourcePath(mtlParts.dir);
+        mtlLoader.load(
+          mtlParts.file,
+          (materials) => {
+            materials.preload();
+
+            const objLoader = new OBJLoader(manager);
+            objLoader.setPath(objParts.dir);
+            objLoader.setMaterials(materials);
+            objLoader.load(
+              objParts.file,
+              (object) => resolve(object),
+              undefined,
+              reject
+            );
+          },
+          undefined,
+          reject
+        );
+      });
+    }
+
+    async function loadModel() {
+      for (const candidate of modelCandidates) {
+        try {
+          return await loadPair(candidate);
+        } catch (err) {
+          console.warn("Load attempt failed for", candidate, err);
+        }
+      }
+      throw new Error("Unable to load refinery model from known paths.");
+    }
+
+    function formatUnits(value) {
+      return `${value.toFixed(2)} u`;
+    }
+
+    function updateMetrics(box, meshCount) {
+      const size = box.getSize(tempVecA);
+      const dimensions = [
+        { axis: "X", value: size.x },
+        { axis: "Y", value: size.y },
+        { axis: "Z", value: size.z }
+      ].sort((a, b) => b.value - a.value);
+
+      const averageDiameter = (dimensions[1].value + dimensions[2].value) / 2;
+
+      meshCountValueEl.textContent = String(meshCount);
+      diameterValueEl.textContent = formatUnits(averageDiameter);
+      heightValueEl.textContent = formatUnits(size.y);
+      axisValueEl.textContent = `${dimensions[0].axis}-axis`;
+    }
+
+    function rememberMeshMaterialDefaults(mesh) {
+      trackedMeshes.push(mesh);
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) {
+        if (!material || material.userData.eduDefaults) continue;
+        material.userData.eduDefaults = {
+          transparent: material.transparent,
+          opacity: material.opacity,
+          depthWrite: material.depthWrite,
+          wireframe: material.wireframe,
+          side: material.side
+        };
+      }
+    }
+
+    function applyVisualModes() {
+      for (const mesh of trackedMeshes) {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) {
+          if (!material || !material.userData.eduDefaults) continue;
+          const base = material.userData.eduDefaults;
+          material.transparent = interactionState.xray || base.transparent;
+          material.opacity = interactionState.xray ? Math.min(base.opacity ?? 1, 0.26) : base.opacity;
+          material.depthWrite = interactionState.xray ? false : base.depthWrite;
+          material.wireframe = interactionState.wireframe || base.wireframe;
+          material.side = THREE.DoubleSide;
+          material.needsUpdate = true;
+        }
+      }
+    }
+
+    function pointFromRelative(box, relative) {
+      return new THREE.Vector3(
+        THREE.MathUtils.lerp(box.min.x, box.max.x, relative[0]),
+        THREE.MathUtils.lerp(box.min.y, box.max.y, relative[1]),
+        THREE.MathUtils.lerp(box.min.z, box.max.z, relative[2])
+      );
+    }
+
+    function clearHotspots() {
+      for (const hotspot of hotspots) {
+        hotspot.el.remove();
+      }
+      hotspots.length = 0;
+    }
+
+    function refreshHotspotVisibility() {
+      hotspotLayerEl.style.display = interactionState.showLabels ? "block" : "none";
+    }
+
+    function updateStepUI() {
+      const current = tutorialSteps[interactionState.stepIndex];
+      stepTitleEl.textContent = `Step ${interactionState.stepIndex + 1}: ${current.title}`;
+      stepBodyEl.textContent = current.body;
+      learningNoteEl.textContent = current.note;
+
+      for (let i = 0; i < hotspots.length; i += 1) {
+        hotspots[i].el.classList.toggle("active", i === interactionState.stepIndex);
+      }
+    }
+
+    function rebuildHotspots() {
+      clearHotspots();
+      if (!modelBounds) return;
+
+      for (let i = 0; i < tutorialSteps.length; i += 1) {
+        const step = tutorialSteps[i];
+        step.worldPoint = pointFromRelative(modelBounds, step.relative);
+
+        const hotspotEl = document.createElement("div");
+        hotspotEl.className = "hotspot";
+
+        const dotEl = document.createElement("button");
+        dotEl.type = "button";
+        dotEl.className = "hotspot-dot";
+        dotEl.title = step.title;
+
+        const labelEl = document.createElement("button");
+        labelEl.type = "button";
+        labelEl.className = "hotspot-label";
+        labelEl.textContent = step.title;
+
+        const focusFromHotspot = () => {
+          setStep(i, true);
+        };
+
+        dotEl.addEventListener("click", focusFromHotspot);
+        labelEl.addEventListener("click", focusFromHotspot);
+
+        hotspotEl.appendChild(dotEl);
+        hotspotEl.appendChild(labelEl);
+        hotspotLayerEl.appendChild(hotspotEl);
+        hotspots.push({ el: hotspotEl, step });
+      }
+
+      updateStepUI();
+      refreshHotspotVisibility();
+      updateHotspotPositions();
+    }
+
+    function updateHotspotPositions() {
+      if (!interactionState.showLabels) return;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      for (let i = 0; i < hotspots.length; i += 1) {
+        const entry = hotspots[i];
+        tempVecB.copy(entry.step.worldPoint).project(camera);
+
+        const onScreen = tempVecB.z > -1 && tempVecB.z < 1;
+        if (!onScreen) {
+          entry.el.style.display = "none";
+          continue;
+        }
+
+        const x = (tempVecB.x * 0.5 + 0.5) * width;
+        const y = (-tempVecB.y * 0.5 + 0.5) * height;
+        const inBounds = x > -30 && x < width + 30 && y > -30 && y < height + 30;
+        if (!inBounds) {
+          entry.el.style.display = "none";
+          continue;
+        }
+
+        entry.el.style.display = "flex";
+        entry.el.style.left = `${x}px`;
+        entry.el.style.top = `${y}px`;
+      }
+    }
+
+    function cubicInOut(t) {
+      if (t < 0.5) return 4 * t * t * t;
+      return 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function focusOnStep(index) {
+      if (!modelBounds) return;
+      const step = tutorialSteps[index];
+      if (!step || !step.worldPoint) return;
+
+      const diagonal = modelBounds.getSize(tempVecC).length();
+      const offset = new THREE.Vector3(
+        step.cameraOffset[0],
+        step.cameraOffset[1],
+        step.cameraOffset[2]
+      );
+
+      if (offset.lengthSq() < 0.0001) {
+        offset.set(1, 0.35, 1);
+      }
+
+      offset.normalize().multiplyScalar(Math.max(5, diagonal * 0.42));
+      const target = step.worldPoint.clone();
+      const endPosition = target.clone().add(offset);
+      endPosition.y = Math.max(endPosition.y, modelBounds.min.y + 1.2);
+
+      focusTween = {
+        start: performance.now(),
+        duration: 900,
+        fromPosition: camera.position.clone(),
+        toPosition: endPosition,
+        fromTarget: controls.target.clone(),
+        toTarget: target
+      };
+
+      controls.autoRotate = false;
+      autoRotateToggleEl.checked = false;
+    }
+
+    function updateFocusTween(now) {
+      if (!focusTween) return;
+      const t = Math.min(1, (now - focusTween.start) / focusTween.duration);
+      const eased = cubicInOut(t);
+
+      camera.position.lerpVectors(focusTween.fromPosition, focusTween.toPosition, eased);
+      controls.target.lerpVectors(focusTween.fromTarget, focusTween.toTarget, eased);
+
+      if (t >= 1) {
+        focusTween = null;
+      }
+    }
+
+    function setStep(index, focus = false) {
+      const count = tutorialSteps.length;
+      interactionState.stepIndex = ((index % count) + count) % count;
+      updateStepUI();
+      if (focus) focusOnStep(interactionState.stepIndex);
+    }
+
+    function updateLightIntensity() {
+      const ratio = Number(lightRangeEl.value) / 100;
+      ambient.intensity = baseLight.ambient * ratio;
+      sun.intensity = baseLight.sun * ratio;
+      fill.intensity = baseLight.fill * ratio;
+    }
+
+    function resetView() {
+      if (!defaultView) return;
+      focusTween = null;
+      camera.position.copy(defaultView.position);
+      controls.target.copy(defaultView.target);
+      controls.minDistance = defaultView.minDistance;
+      controls.maxDistance = defaultView.maxDistance;
+      controls.autoRotate = autoRotateToggleEl.checked;
+      controls.update();
+    }
+
+    labelsToggleEl.addEventListener("change", () => {
+      interactionState.showLabels = labelsToggleEl.checked;
+      refreshHotspotVisibility();
+      updateHotspotPositions();
+    });
+
+    autoRotateToggleEl.addEventListener("change", () => {
+      controls.autoRotate = autoRotateToggleEl.checked;
+    });
+
+    xrayToggleEl.addEventListener("change", () => {
+      interactionState.xray = xrayToggleEl.checked;
+      applyVisualModes();
+    });
+
+    wireframeToggleEl.addEventListener("change", () => {
+      interactionState.wireframe = wireframeToggleEl.checked;
+      applyVisualModes();
+    });
+
+    lightRangeEl.addEventListener("input", updateLightIntensity);
+    resetViewBtnEl.addEventListener("click", resetView);
+    tourFocusBtnEl.addEventListener("click", () => focusOnStep(interactionState.stepIndex));
+    stepPrevBtnEl.addEventListener("click", () => setStep(interactionState.stepIndex - 1, true));
+    stepNextBtnEl.addEventListener("click", () => setStep(interactionState.stepIndex + 1, true));
+
+    // ----------------------------
+    // Fit object into the view
+    // ----------------------------
+    function frameObject(object3D) {
+      let box = new THREE.Box3().setFromObject(object3D);
+      if (box.isEmpty()) {
+        throw new Error("Invalid model bounds: empty bounding box.");
+      }
+
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      if (![size.x, size.y, size.z, maxDim].every(Number.isFinite) || maxDim <= 0) {
+        throw new Error("Invalid model bounds: non-finite dimensions.");
+      }
+
+      const targetSize = 14;
+      object3D.scale.setScalar(targetSize / maxDim);
+
+      box = new THREE.Box3().setFromObject(object3D);
+      if (box.isEmpty()) {
+        throw new Error("Invalid model bounds after scaling.");
+      }
+      const centerAfterScale = box.getCenter(new THREE.Vector3());
+      object3D.position.sub(centerAfterScale);
+
+      box = new THREE.Box3().setFromObject(object3D);
+      if (box.isEmpty()) {
+        throw new Error("Invalid model bounds after centering.");
+      }
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const radius = sphere.radius || 1;
+      if (!Number.isFinite(radius) || radius <= 0) {
+        throw new Error("Invalid model bounds: non-finite radius.");
+      }
+
+      const fov = THREE.MathUtils.degToRad(camera.fov);
+      let distance = radius / Math.sin(fov / 2);
+      distance *= 1.35;
+      if (!Number.isFinite(distance) || distance <= 0) {
+        throw new Error("Invalid camera framing distance.");
+      }
+
+      camera.near = Math.max(0.05, distance / 150);
+      camera.far = Math.max(500, distance * 80);
+      camera.position.set(distance * 0.95, distance * 0.55, distance * 0.95);
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+
+      controls.target.set(0, 0, 0);
+      controls.minDistance = radius * 0.5;
+      controls.maxDistance = radius * 15;
+      controls.update();
+
+      ground.position.y = box.min.y - 0.01;
+      modelBounds = box.clone();
+      defaultView = {
+        position: camera.position.clone(),
+        target: controls.target.clone(),
+        minDistance: controls.minDistance,
+        maxDistance: controls.maxDistance
+      };
+
+      window.__debug.frame = {
+        size: { x: size.x, y: size.y, z: size.z },
+        maxDim,
+        radius,
+        distance,
+        camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+        groundY: ground.position.y
+      };
+    }
+
+    // ----------------------------
+    // Load, prepare, and render
+    // ----------------------------
+    function finalizeEducationalState(meshCount) {
+      if (!modelBounds) return;
+      updateMetrics(modelBounds, meshCount);
+      rebuildHotspots();
+      setStep(interactionState.stepIndex, false);
+      refreshHotspotVisibility();
+      updateLightIntensity();
+      applyVisualModes();
+    }
+
+    const isFileProtocol = window.location.protocol === "file:";
+    if (isFileProtocol) {
+      loadingEl.textContent = "CORS blocked file:// access. Run a local server (py -m http.server 8000).";
+      setStatus("Open via http://localhost:8000/sem3.html, not file://", true);
+    } else {
+      loadModel()
+        .then((model) => {
+          if (MODEL_IS_Z_UP) {
+            model.rotation.x = -Math.PI / 2;
+          }
+
+          trackedMeshes.length = 0;
+          let meshCount = 0;
+          model.traverse((child) => {
+            if (child.isMesh) {
+              meshCount += 1;
+              child.visible = true;
+              child.frustumCulled = false;
+              child.castShadow = true;
+              child.receiveShadow = true;
+              rememberMeshMaterialDefaults(child);
+              if (child.material) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                for (const material of materials) {
+                  material.side = THREE.DoubleSide;
+                  material.needsUpdate = true;
+                }
+              }
+            }
+          });
+
+          if (meshCount > 0) {
+            scene.remove(loadingPlaceholder);
+            scene.add(model);
+            frameObject(model);
+            finalizeEducationalState(meshCount);
+            loadingEl.classList.add("hidden");
+            setStatus(`Model loaded successfully.\nMeshes: ${meshCount}`);
+            window.__debug.meshCount = meshCount;
+            window.__viewerReady = true;
+            setTimeout(() => {
+              statusEl.style.display = "none";
+            }, 2000);
+          } else {
+            throw new Error("Model loaded but no mesh data was found.");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          loadingEl.textContent = "Failed to load model files. Showing fallback geometry.";
+          setStatus(`Model load failed:\n${err.message}`, true);
+
+          const fallback = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.8, 3.3, 8, 36, 1, false),
+            new THREE.MeshStandardMaterial({
+              color: 0x8ea5c9,
+              metalness: 0.35,
+              roughness: 0.55
+            })
+          );
+          trackedMeshes.length = 0;
+          rememberMeshMaterialDefaults(fallback);
+          fallback.castShadow = true;
+          fallback.receiveShadow = true;
+          scene.remove(loadingPlaceholder);
+          scene.add(fallback);
+          frameObject(fallback);
+          finalizeEducationalState(1);
+          setTimeout(() => loadingEl.classList.add("hidden"), 1000);
+          window.__viewerReady = true;
+        });
+    }
+
+    function animate() {
+      if (loadingPlaceholder.parent) {
+        loadingPlaceholder.rotation.x += 0.004;
+        loadingPlaceholder.rotation.y += 0.008;
+      }
+      updateFocusTween(performance.now());
+      controls.update();
+      updateHotspotPositions();
+      renderer.render(scene, camera);
+    }
+    renderer.setAnimationLoop(animate);
+
+    // ----------------------------
+    // Responsive resize handling
+    // ----------------------------
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 900 && panelState.collapsed) {
+        panelState.collapsed = false;
+        eduPanelEl.classList.remove("collapsed");
+      }
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      updateHotspotPositions();
+    });
+  </script>
+</body>
+</html>
